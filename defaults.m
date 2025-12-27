@@ -1,0 +1,26 @@
+function p = defaults()
+p = struct();
+p.L = 10.8;
+p.W = 7.2;
+p.H = 2.8;
+p.rho_air = 1.2;
+p.Cp_air  = 1005;
+p.d1 = 0.3;
+p.a1 = 0.12;
+p.Ug = 2.0;
+p.Uf = 0.3;
+p.pGlass = 0.8;
+p.Qpp = 100;
+p.vent_base = 0.0;
+p.vent_pp   = 0.010;
+% p.vent_pp   = 0.05;
+p.T_heat_occ   = 20;
+p.T_cool_occ   = 24;
+p.T_heat_unocc = 16;
+p.T_cool_unocc = 28;
+p.preheat_hours = 1;
+p.Tpast_init = [20 19 18 19];
+p.Qmax = 50000;
+p.unocc_mode = "SETBACK";   % or "FREEFLOAT"
+% p.unocc_mode = "FREEFLOAT";   % or "FREEFLOAT"
+end
