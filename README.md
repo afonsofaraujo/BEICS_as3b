@@ -140,9 +140,4 @@ The figure below illustrates the thermal-node structure and the interaction betw
 
 ![Model schematic](figures/model_schematic.png)
 
----
-
-## 8. Reference
-
-*Assignment 3B — Buildings as Energy and Indoor Climate Systems*  
 December 2025
