@@ -151,8 +151,6 @@ Daily-average and hourly HVAC loads over the year, highlighting heating and cool
 
 ![Daily average HVAC load](figures/Q5_annual_daily_HVAC.png)
 
-![Hourly HVAC load](figures/Q5_annual_hourly_HVAC.png)
-
 ### Annual nodal temperatures
 Hourly evolution of outdoor air, glazing, indoor air, interior mass, and façade wall temperatures.
 
@@ -164,9 +162,5 @@ Examples of typical winter, spring, summer, and autumn days, showing temperature
 ![Day 46](figures/Q5_day46.png)
 
 ![Day 137](figures/Q5_day137.png)
-
-![Day 228](figures/Q5_day228.png)
-
-![Day 319](figures/Q5_day319.png)
 
 December 2025
