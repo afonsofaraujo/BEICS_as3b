@@ -1,4 +1,4 @@
-# Assignment 3B — Buildings as Energy and Indoor Climate Systems
+# Assignment 3B - Buildings as Energy and Indoor Climate Systems
 
 This repository contains the MATLAB implementation and post-processing scripts developed for **Assignment 3B** of the course *Buildings as Energy and Indoor Climate Systems*.
 
