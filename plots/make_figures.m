@@ -12,8 +12,8 @@ E_heat_kWh = S.E_heat_kWh;
 E_cool_kWh = S.E_cool_kWh;
 
 % ---- Output folder ----
-outDir = fullfile(pwd,"figures");
-if ~exist(outDir, "dir"), mkdir(outDir); end
+figDir = fullfile(root,"figures");
+if ~exist(figDir,"dir"), mkdir(figDir); end
 
 % ---- Export settings ----
 dpi = 600;                 % good for LaTeX
@@ -134,10 +134,10 @@ legend(a2, [bh bc bp bs], ...
     {"Heating (kW)","Cooling (kW)","People gains (kW)","Solar gains (kW)"}, ...
     "Location","best", "Orientation","vertical");
 
-exportgraphics(f3, fullfile(outDir, sprintf("Q5_day%02d_profiles.png",day_to_plot)), "Resolution", dpi);
+exportgraphics(f3, fullfile(figDir, sprintf("Q5_day%02d_profiles.png",day_to_plot)), "Resolution", dpi);
 
 %% ============================================================
 % Done
 % ============================================================
-fprintf("Saved figures to: %s\n", outDir);
+fprintf("Saved figures to: %s\n", figDir);
 close all;

@@ -7,8 +7,8 @@ E_heat_kWh = S.E_heat_kWh;
 E_cool_kWh = S.E_cool_kWh;
 
 % ---- Output folder ----
-outDir = fullfile(pwd,"figures");
-if ~exist(outDir, "dir"), mkdir(outDir); end
+figDir = fullfile(root,"figures");
+if ~exist(figDir,"dir"), mkdir(figDir); end
 
 % ---- Export settings ----
 dpi = 600;                 % good for LaTeX
@@ -131,5 +131,5 @@ uistack(ax5, "top");
 
 set([ax1 ax2 ax3 ax4 ax5], "PositionConstraint","innerposition");
 
-exportgraphics(f1, fullfile(outDir,"Q5_annual_temperatures.png"), ...
+exportgraphics(f1, fullfile(figDir,"Q5_annual_temperatures.png"), ...
                "Resolution", dpi);

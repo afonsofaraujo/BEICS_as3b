@@ -1,5 +1,9 @@
 close all; clear; clc;
 
+root = fileparts(mfilename("fullpath"));
+addpath(genpath(fullfile(root,"src")));
+addpath(genpath(fullfile(root,"plots")));
+
 load("HourlyEnergyData.mat","df");
 
 in = struct();

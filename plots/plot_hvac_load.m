@@ -12,8 +12,8 @@ E_heat_kWh = S.E_heat_kWh;
 E_cool_kWh = S.E_cool_kWh;
 
 % ---- Output folder ----
-outDir = fullfile(pwd,"figures");
-if ~exist(outDir, "dir"), mkdir(outDir); end
+figDir = fullfile(root,"figures");
+if ~exist(figDir,"dir"), mkdir(figDir); end
 
 % ---- Export settings ----
 dpi = 600;                 % good for LaTeX
@@ -96,7 +96,7 @@ legend(ax, {"Heating","Cooling"}, ...
 
 uistack(ax,"top");
 
-exportgraphics(f2, fullfile(outDir,"Q5_annual_HVAC_load.png"), ...
+exportgraphics(f2, fullfile(figDir,"Q5_annual_HVAC_load.png"), ...
                "Resolution", dpi);
 %% ============================================================
 % FIG 2b — Daily AVERAGE HVAC load (1 bar/day), monthly x-axis, no title
@@ -166,6 +166,6 @@ xlabel(ax_lbl, "Month of year");
 legend(ax, {"Heating","Cooling"}, "Location","best", "Orientation","horizontal");
 uistack(ax,"top");
 
-exportgraphics(f2b, fullfile(outDir,"Q5_dailyAvg_HVAC_load.png"), "Resolution", dpi);
+exportgraphics(f2b, fullfile(figDir,"Q5_dailyAvg_HVAC_load.png"), "Resolution", dpi);
 
 close all;

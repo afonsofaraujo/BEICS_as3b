@@ -8,7 +8,9 @@ close all; clear; clc;
 S = load("AS3B_Q5_Results.mat","Results","p","E_heat_kWh","E_cool_kWh");
 R = S.Results;
 
-outDir = fullfile(pwd,"figures"); if ~exist(outDir,"dir"), mkdir(outDir); end
+figDir = fullfile(root,"figures");
+if ~exist(figDir,"dir"), mkdir(figDir); end
+
 dpi = 600; figBG = "white";
 
 col_glass = [0.90 0.15 0.15];
@@ -202,7 +204,7 @@ lgTemps.Position = [xRight yLeg pt(3) pt(4)];
 
 
 % Export
-exportgraphics(f, fullfile(outDir, sprintf("Q5_day%02d_combined_halfwidth.png",day_to_plot)), "Resolution", dpi);
-fprintf("Saved figures to: %s\n", outDir);
+exportgraphics(f, fullfile(figDir, sprintf("Q5_day%02d_combined_halfwidth.png",day_to_plot)), "Resolution", dpi);
+fprintf("Saved figures to: %s\n", figDir);
 
 close all;
