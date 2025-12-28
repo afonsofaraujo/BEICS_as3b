@@ -1,210 +1,192 @@
-% ============================================================
-% make_figures_Q5_halfwidth.m
-% FIX: lines always above bars (robust) using 2 overlaid axes
-% ============================================================
-
 close all; clear; clc;
 
-S = load("AS3B_Q5_Results.mat","Results","p","E_heat_kWh","E_cool_kWh");
+[root, figDir, resFile] = paths_from_plots();
+addpath(genpath(fullfile(root,"src")));
+addpath(genpath(fullfile(root,"plots")));
+
+S = load(resFile,"Results","p","in");
 R = S.Results;
+p = S.p;
+in = S.in;
 
-figDir = fullfile(root,"figures");
-if ~exist(figDir,"dir"), mkdir(figDir); end
-
-dpi = 600; figBG = "white";
-
-col_glass = [0.90 0.15 0.15];
-col_air   = [0.10 0.40 0.80];
-col_wall3 = [0.80 0.70 0.10];
-col_wall4 = [0.55 0.20 0.70];
-col_out   = [0.20 0.60 0.20];
-
+dpi = 600;
 set(groot, ...
  "defaultAxesFontSize",14, "defaultTextFontSize",14, ...
  "defaultAxesLabelFontSizeMultiplier",1.1, "defaultAxesTitleFontSizeMultiplier",1.2, ...
  "defaultLegendFontSize",9);
 
-t = R.HOUR_CUM(:);
+cols = struct( ...
+ "glass",[0.90 0.15 0.15], ...
+ "air",  [0.10 0.40 0.80], ...
+ "wall3",[0.80 0.70 0.10], ...
+ "wall4",[0.55 0.20 0.70], ...
+ "out",  [0.20 0.60 0.20]);
 
-% ------------------- Day selection -------------------
+days = [46 137 228 319];
 
+% yLeg mapping (height of legends): 137 & 228 -> 0.10 ; 46 & 319 -> 0.55
+yLegMap = containers.Map( ...
+    {'46','137','228','319'}, ...
+    {0.55, 0.10, 0.10, 0.55} );
 
-% 46   137    228   319
-day_to_plot = 137;
-i_start = (day_to_plot-1)*24;
-i_end   = day_to_plot*24;
-idx = (t >= i_start) & (t <= i_end);
-
-% ------------------- Data -------------------
-T0 = R.T0(idx); T1 = R.T1(idx); T2 = R.T2(idx); T3 = R.T3(idx); T4 = R.T4(idx);
-QkW  = R.Q_LOAD(idx)/1000;
-
-p = defaults();
-Qsol = p.L * p.H * p.pGlass * p.d1 * R.Q_SOL(idx)/1000;
-Qppl = (R.NP(idx) * 100) / 1000; % kW
+Tlims = [-5 35];
+scale = 1.0;
+axPos = [0.10 0.14 0.82 0.78];
 
 t_end = 0:24;
 t_mid = 0.5:1:23.5;
 
-QkWm  = QkW(2:end);
-Qsolm = Qsol(2:end);
-Qpplm = Qppl(2:end);
+tCum = R.HOUR_CUM(:);
 
-idx_heat = QkWm > 0;
-idx_cool = QkWm < 0;
-idx_ppl  = Qpplm > 0;
+for k = 1:numel(days)
+    day_to_plot = days(k);
+    yLeg = axPos(2) + yLegMap(num2str(day_to_plot));
 
-% % ---- Y-limits base from temperatures ----
-% Tmin = min([T0;T1;T2;T3;T4]); Tmax = max([T0;T1;T2;T3;T4]);
-% Tpad = 0.06*(Tmax - Tmin + eps);
-% Tlims = [Tmin-Tpad, Tmax+Tpad];
+    idx = day_idx(tCum, day_to_plot);
 
-% ---- Y-limits base from temperatures ----
-Tmin = -5; Tmax = 35;
-Tlims = [Tmin, Tmax];
+    T0 = R.T0(idx); T1 = R.T1(idx); T2 = R.T2(idx); T3 = R.T3(idx); T4 = R.T4(idx);
+    QkW  = R.Q_LOAD(idx)/1000;
 
-scale = 1.0; % 1.0 => 10°C aligns with 10 kW (visual calibration)
+    Qsol = p.L * p.H * p.pGlass * p.d1 * R.Q_SOL(idx)/1000;
 
-% ---- Title (calendar date from day-of-year) ----
-baseDate = datetime(2025,1,1);
-dateStr  = datestr(baseDate + days(day_to_plot-1), 'dd mmmm');
+    NP_day = get_np(R, in, idx);
+    Qppl = (NP_day * 100) / 1000;   % kW
 
-% ------------------- Figure (half width) -------------------
-f = figure("Units","pixels","Position",[80 120 800 560],"Color",figBG);
+    QkWm  = QkW(2:end);
+    Qsolm = Qsol(2:end);
+    Qpplm = Qppl(2:end);
 
-% Axes position (use explicit position so legends placement is stable)
-axPos = [0.10 0.14 0.82 0.78];
+    baseDate = datetime(2025,1,1);
+    dateStr  = datestr(baseDate + caldays(day_to_plot-1), "dd mmmm");
 
+    f = figure("Units","pixels","Position",[80 120 800 560],"Color","white");
 
-% ===================== BOTTOM AXES: BARS (kW) =====================
-axBars = axes(f,"Position",axPos);
-hold(axBars,"on"); box(axBars,"on");
-set(axBars,"XColor","k","YColor","k","Layer","top");
+    axBars = axes(f,"Position",axPos);
+    hold(axBars,"on"); box(axBars,"on");
+    xlim(axBars,[0 24]); xticks(axBars,0:2:24); xlabel(axBars,"Hour of day");
 
-% X formatting (main x-axis lives here)
-xlim(axBars,[0 24]);
-xticks(axBars,0:2:24);
-xlabel(axBars,"Hour of day");
+    yyaxis(axBars,"right"); axBars.YColor = "k";
+    plot_bars(axBars, t_mid, QkWm, Qpplm, Qsolm);
+    ylabel(axBars,"Power [kW]");
+    ylim(axBars, scale*Tlims);
 
-% Grid (horizontal only)
-grid(axBars,"on");
-axBars.XGrid = "off";
-axBars.YGrid = "off";
+    yyaxis(axBars,"left"); axBars.YAxis(1).Visible = "off";
 
-% Right axis for power
-yyaxis(axBars,"right");
-set(axBars,"YColor","k");
+    axLines = axes(f,"Position",axPos,"Color","none");
+    hold(axLines,"on"); box(axLines,"off");
+    xlim(axLines,[0 24]); axLines.XAxis.Visible = "off";
+    ylim(axLines, Tlims); ylabel(axLines,"Temperature [°C]");
 
-bp = bar(axBars, t_mid(idx_ppl),  Qpplm(idx_ppl),  1.0, ...
-    "FaceColor",[0.7 0.7 0.7],"EdgeColor","none","FaceAlpha",0.85);
-bh = bar(axBars, t_mid(idx_heat), QkWm(idx_heat), 1.0, ...
-    "FaceColor","red","EdgeColor","none","FaceAlpha",0.6);
-bc = bar(axBars, t_mid(idx_cool), QkWm(idx_cool), 1.0, ...
-    "FaceColor","blue","EdgeColor","none","FaceAlpha",0.6);
-bs = bar(axBars, t_mid,           Qsolm,           1.0, ...
-    "FaceColor",[0.95 0.85 0.20],"EdgeColor","none","FaceAlpha",0.6);
+    add_comfort_band(axLines, Qpplm>0, 20, 24);
 
-ylabel(axBars,"Power [kW]");
-ylim(axBars, scale*Tlims);  % keep your visual calibration
+    hT1 = plot(axLines, t_end, T1, "LineWidth",1.6, "Color",cols.glass);
+    hT2 = plot(axLines, t_end, T2, "LineWidth",1.6, "Color",cols.air);
+    hT3 = plot(axLines, t_end, T3, "LineWidth",1.6, "Color",cols.wall3);
+    hT4 = plot(axLines, t_end, T4, "LineWidth",1.6, "Color",cols.wall4);
+    hT0 = plot(axLines, t_end, T0, "LineWidth",1.6, "Color",cols.out);
 
-% Hide left y-axis of bars axes (we'll use the top axis for temperatures)
-yyaxis(axBars,"left");
-axBars.YAxis(1).Visible = "off";
+    y0 = yline(axLines,0,"-","LineWidth",1.0); y0.Color="k";
+    title(axLines, dateStr, "FontWeight","normal","FontSize",14);
 
-% ===================== TOP AXES: LINES (°C) =====================
-axLines = axes(f,"Position",axPos,"Color","none");
-hold(axLines,"on"); box(axLines,"off");
-set(axLines,"XColor","k","YColor","k");
+    linkaxes([axBars axLines],"x");
 
-% Match x range, but hide x-axis here (so only one x-axis is shown)
-xlim(axLines,[0 24]);
-xticks(axLines,0:1:24);
-axLines.XAxis.Visible = "off";
-% ---- Comfort temperature band (20–24 °C) ----
-% ---- Comfort band ONLY when occupied (NP > 0) ----
-NP_day  = R.NP(idx);        % 25 pontos (0..24)
-NPm     = NP_day(2:end);    % 24 horas (0-1 ... 23-24), alinhado com t_mid
-occm    = NPm > 0;          % ocupação por hora
+    Qavg_day = mean(QkWm,"omitnan");
+    hHVAC = findobj(axBars,"Type","Bar","Tag", ternary(Qavg_day>=0,"HVAC_heat","HVAC_cool"));
 
-% Encontrar blocos contíguos de ocupação
-d = diff([false; occm(:); false]);
-run_start = find(d == 1);
-run_end   = find(d == -1) - 1;
+    lgBars  = legend(axBars,  [hHVAC findobj(axBars,"Tag","People") findobj(axBars,"Tag","Solar")], ...
+                     {"HVAC","People gains","Solar gains"}, "Box","off");
+    lgTemps = legend(axLines, [hT1 hT2 hT3 hT4 hT0], ...
+                     {'Glass','Indoor air','Interior mass','Facade wall','Outdoor'}, "Box","off");
 
-comfortCol = [0.80 0.88 0.97];  % subtle light blue
-comfortAlpha = 0.30;
+    place_legends(lgBars, lgTemps, axPos, yLeg);
 
-hComfort = gobjects(numel(run_start),1);
-for r = 1:numel(run_start)
-    x0 = run_start(r) - 1;   % edge esquerda (ex.: k=1 -> 0)
-    x1 = run_end(r);         % edge direita  (ex.: k=1 -> 1)
+    outName = sprintf("Q5_day%02d.png", day_to_plot);
+    exportgraphics(f, fullfile(figDir,outName), "Resolution", dpi);
+    fprintf("Saved: %s\n", fullfile(figDir,outName));
 
-    hComfort(r) = patch(axLines, ...
-        [x0 x1 x1 x0], [20 20 24 24], comfortCol, ...
-        "EdgeColor","none", "FaceAlpha",comfortAlpha);
+    close(f);
 end
 
+% ===================== helpers =====================
 
-% Temperature axis (left)
-ylim(axLines, Tlims);
-ylabel(axLines,"Temperature [°C]");
-
-hT1 = plot(axLines, t_end, T1, "LineWidth",1.6, "LineStyle","-", "Color",col_glass);
-hT2 = plot(axLines, t_end, T2, "LineWidth",1.6, "LineStyle","-", "Color",col_air);
-hT3 = plot(axLines, t_end, T3, "LineWidth",1.6, "LineStyle","-", "Color",col_wall3);
-hT4 = plot(axLines, t_end, T4, "LineWidth",1.6, "LineStyle","-", "Color",col_wall4);
-hT0 = plot(axLines, t_end, T0, "LineWidth",1.6, "LineStyle","-", "Color",col_out);
-
-% Zero line drawn on top axis so it sits above bars too
-y0 = yline(axLines,0,"-","LineWidth",1.0); y0.Color="k";
-
-% Title on top axis
-title(axLines, dateStr, "FontWeight","normal","FontSize",14);
-
-% Keep x linked (zoom/pan stays consistent)
-linkaxes([axBars axLines],"x");
-
-% ---- HVAC legend colour based on daily average ----
-Qavg_day = mean(QkWm,"omitnan");
-if Qavg_day >= 0
-    hHVAC = bh;
-else
-    hHVAC = bc;
+function [root, figDir, resFile] = paths_from_plots()
+    this = fileparts(mfilename("fullpath"));
+    root = fileparts(this);
+    figDir  = fullfile(root,"figures"); if ~exist(figDir,"dir"), mkdir(figDir); end
+    resFile = fullfile(root,"results","AS3B_Q5_Results.mat");
 end
 
-% ===================== LEGENDS (manual position) =====================
-% Create legends on their respective axes
-lgBars  = legend(axBars,  [hHVAC bp bs], {"HVAC","People gains","Solar gains"}, "Box","off");
-lgTemps = legend(axLines, [hT1 hT2 hT3 hT4 hT0], {'Glass','Indoor air','Interior mass','Facade wall','Outdoor'}, "Box","off");
+function idx = day_idx(tCum, day)
+    i0 = (day-1)*24; i1 = day*24;
+    idx = (tCum >= i0) & (tCum <= i1);
+end
 
-lgBars.Location  = "none";
-lgTemps.Location = "none";
-lgBars.Units     = "normalized";
-lgTemps.Units    = "normalized";
+function NP_day = get_np(R, in, idx)
+    if isfield(R,"NP")
+        NP_day = R.NP(idx);
+    elseif isfield(in,"NP")
+        NP_day = in.NP(idx);
+    else
+        error("No NP found (neither Results.NP nor in.NP).");
+    end
+end
 
-drawnow; % ensure sizes are computed
+function plot_bars(ax, xmid, QkWm, Qpplm, Qsolm)
+    idx_heat = QkWm > 0;
+    idx_cool = QkWm < 0;
+    idx_ppl  = Qpplm > 0;
 
-pb = lgBars.Position;
-pt = lgTemps.Position;
+    if any(idx_ppl)
+        b = bar(ax, xmid(idx_ppl), Qpplm(idx_ppl), 1.0, ...
+            "FaceColor",[0.7 0.7 0.7],"EdgeColor","none","FaceAlpha",0.85);
+        b.Tag = "People";
+    end
+    if any(idx_heat)
+        b = bar(ax, xmid(idx_heat), QkWm(idx_heat), 1.0, ...
+            "FaceColor","red","EdgeColor","none","FaceAlpha",0.6);
+        b.Tag = "HVAC_heat";
+    end
+    if any(idx_cool)
+        b = bar(ax, xmid(idx_cool), QkWm(idx_cool), 1.0, ...
+            "FaceColor","blue","EdgeColor","none","FaceAlpha",0.6);
+        b.Tag = "HVAC_cool";
+    end
+    b = bar(ax, xmid, Qsolm, 1.0, ...
+        "FaceColor",[0.95 0.85 0.20],"EdgeColor","none","FaceAlpha",0.6);
+    b.Tag = "Solar";
+end
 
-% Slightly above x-axis (inside axes)
-yLeg = axPos(2) + 0.1;   % tweak this value
+function add_comfort_band(ax, occHour, Tlow, Thigh)
+    d = diff([false; occHour(:); false]);
+    run_start = find(d==1);
+    run_end   = find(d==-1)-1;
 
-% Left legend (bars)
-xLeft  = axPos(1) + 0.01;
+    col = [0.80 0.88 0.97]; alpha = 0.30;
+    for r = 1:numel(run_start)
+        x0 = run_start(r)-1;
+        x1 = run_end(r);
+        patch(ax, [x0 x1 x1 x0], [Tlow Tlow Thigh Thigh], col, ...
+            "EdgeColor","none","FaceAlpha",alpha);
+    end
+end
 
-% Right legend (temps)
-xRight = axPos(1) + axPos(3) - pt(3) - 0.01;
+function place_legends(lgBars, lgTemps, axPos, yLeg)
+    lgBars.Location  = "none";
+    lgTemps.Location = "none";
+    lgBars.Units = "normalized";
+    lgTemps.Units = "normalized";
+    drawnow;
 
-lgBars.Position  = [xLeft  yLeg pb(3) pb(4)];
-lgTemps.Position = [xRight yLeg pt(3) pt(4)];
+    pb = lgBars.Position;
+    pt = lgTemps.Position;
 
+    xLeft  = axPos(1) + 0.01;
+    xRight = axPos(1) + axPos(3) - pt(3) - 0.01;
 
+    lgBars.Position  = [xLeft  yLeg pb(3) pb(4)];
+    lgTemps.Position = [xRight yLeg pt(3) pt(4)];
+end
 
-
-
-% Export
-exportgraphics(f, fullfile(figDir, sprintf("Q5_day%02d_combined_halfwidth.png",day_to_plot)), "Resolution", dpi);
-fprintf("Saved figures to: %s\n", figDir);
-
-close all;
+function out = ternary(cond,a,b)
+    if cond, out = a; else, out = b; end
+end

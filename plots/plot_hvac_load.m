@@ -1,171 +1,102 @@
-% ============================================================
-% make_figures_Q5.m
-% Export figures (PNG, high-res) for LaTeX report
-% ============================================================
-
 close all; clear; clc;
 
-S = load("AS3B_Q5_Results.mat","Results","p","E_heat_kWh","E_cool_kWh");
-Results   = S.Results;
-p         = S.p;
-E_heat_kWh = S.E_heat_kWh;
-E_cool_kWh = S.E_cool_kWh;
+this = fileparts(mfilename("fullpath"));
+root = fileparts(this);
 
-% ---- Output folder ----
-figDir = fullfile(root,"figures");
-if ~exist(figDir,"dir"), mkdir(figDir); end
+addpath(fullfile(root,"src"));
+addpath(fullfile(root,"plots"));
 
-% ---- Export settings ----
-dpi = 600;                 % good for LaTeX
-figBG = "white";
+S = load(fullfile(root,"results","AS3B_Q5_Results.mat"),"Results","p","in");
+R = S.Results;
 
-% ---- Colors (match your current palette) ----
-col_glass = [0.90 0.15 0.15];
-col_air   = [0.10 0.40 0.80];
-col_wall3 = [0.80 0.70 0.10];
-col_wall4 = [0.55 0.20 0.70];
-col_out   = [0.20 0.60 0.20];
+figDir = fullfile(root,"figures"); if ~exist(figDir,"dir"), mkdir(figDir); end
+dpi = 600;
 
-% Convenience
-t = Results.HOUR_CUM(:);
-N = numel(t);
-
-% ---- Font settings (LaTeX-friendly) ----
 set(groot, ...
-    "defaultAxesFontSize",        14, ...
-    "defaultTextFontSize",        14, ...
-    "defaultAxesLabelFontSizeMultiplier", 1.1, ...
-    "defaultAxesTitleFontSizeMultiplier", 1.2, ...
-    "defaultLegendFontSize",      9);
+ "defaultAxesFontSize",14, ...
+ "defaultTextFontSize",14, ...
+ "defaultAxesLabelFontSizeMultiplier",1.1, ...
+ "defaultAxesTitleFontSizeMultiplier",1.2, ...
+ "defaultLegendFontSize",9);
 
+QkW = R.Q_LOAD(:)/1000;
 
-%% ============================================================
-% FIG 2 — Annual HVAC load (monthly x-axis, no title)
-% ============================================================
+% ---------- FIG 1: hourly load (kW), month labels ----------
+t = R.HOUR_CUM(:);
+f = figure("Units","pixels","Position",[140 120 1400 520],"Color","white");
+ax = axes(f); hold(ax,"on");
 
-% ---- Month definition (non-leap year) ----
-days_in_month = [31 28 31 30 31 30 31 31 30 31 30 31];
-month_names   = ["Jan","Feb","Mar","Apr","May","Jun", ...
-                 "Jul","Aug","Sep","Oct","Nov","Dec"];
+plot_posneg_bars(ax, t, QkW, 1.0, 1.0);
 
-month_edges   = [0 cumsum(days_in_month)*24];
-month_centers = month_edges(1:end-1) + diff(month_edges)/2;
+grid(ax,"on"); box(ax,"on");
+ylabel(ax,"HVAC load [kW]");
+xlim(ax,[1 numel(t)]);
 
-f2 = figure("Units","pixels","Position",[140 120 1400 520],"Color",figBG);
-
-QkW = Results.Q_LOAD(:)/1000;
-idx_heat = QkW > 0;
-idx_cool = QkW < 0;
-
-ax = axes(f2); hold(ax,"on");
-
-bar(ax, t(idx_heat), QkW(idx_heat), 1.0, ...
-    "FaceColor","red", "EdgeColor","none");
-bar(ax, t(idx_cool), QkW(idx_cool), 1.0, ...
-    "FaceColor","blue","EdgeColor","none");
-
-grid on; box on;
-ylabel("HVAC load [kW]");
-xlim([1 N]);
-
-% --- ticks at month transitions (for grid alignment)
-xticks(month_edges);
-set(ax,"XTickLabel",[]);
+[mEdges, mCenters, mNames] = month_ticks("hours");
+set(ax,"XTick",mEdges,"XTickLabel",[]);
 ax.XGrid = "on"; ax.YGrid = "on";
+add_month_labels(ax, mCenters, mNames, "Month of year");
 
-% --- overlay axis for centred month labels
-ax_lbl = axes("Position", ax.Position, ...
-              "Color","none", ...
-              "XAxisLocation","bottom", ...
-              "YAxisLocation","right", ...
-              "XLim", ax.XLim, ...
-              "YLim", ax.YLim);
+legend(ax,{"Heating","Cooling"}, "Location","best", "Orientation","horizontal");
+exportgraphics(f, fullfile(figDir,"Q5_annual_hourly_HVAC.png"), "Resolution", dpi);
 
-ax_lbl.XTick = month_centers;
-ax_lbl.XTickLabel = month_names;
-ax_lbl.YTick = [];
-ax_lbl.Box = "off";
-ax_lbl.XGrid = "off";
-ax_lbl.YGrid = "off";
-ax_lbl.TickLength = [0 0];
-xlabel(ax_lbl,"Month of year");
-
-legend(ax, {"Heating","Cooling"}, ...
-       "Location","best", ...
-       "Orientation","horizontal");
-
-uistack(ax,"top");
-
-exportgraphics(f2, fullfile(figDir,"Q5_annual_HVAC_load.png"), ...
-               "Resolution", dpi);
-%% ============================================================
-% FIG 2b — Daily AVERAGE HVAC load (1 bar/day), monthly x-axis, no title
-% ============================================================
-
-% ---- Month definition (non-leap year) in DAYS ----
-days_in_month = [31 28 31 30 31 30 31 31 30 31 30 31];
-month_names   = ["Jan","Feb","Mar","Apr","May","Jun", ...
-                 "Jul","Aug","Sep","Oct","Nov","Dec"];
-
-month_edges_d   = [0 cumsum(days_in_month)];                 % day boundaries
-month_centers_d = month_edges_d(1:end-1) + diff(month_edges_d)/2;
-
-% ---- Build daily means (kW) ----
-QkW = Results.Q_LOAD(:)/1000;
-
+% ---------- FIG 2: daily average load (kW), month labels ----------
 ndays = floor(numel(QkW)/24);
-QkW = QkW(1:ndays*24);
+Qday = mean(reshape(QkW(1:ndays*24),24,ndays),1,"omitnan")';
+d = (1:ndays)';
 
-Qmat = reshape(QkW, 24, ndays);          % 24 x ndays
-Qday_avg = mean(Qmat, 1, "omitnan")';    % ndays x 1
+f = figure("Units","pixels","Position",[140 120 1400 520],"Color","white");
+ax = axes(f); hold(ax,"on");
 
-d = (1:ndays)';                          % day index (1..365)
+plot_posneg_bars(ax, d, Qday, 1.0, 1.0);
 
-idx_heat_d = Qday_avg > 0;
-idx_cool_d = Qday_avg < 0;
+grid(ax,"on"); box(ax,"on");
+ylabel(ax,"Daily average HVAC load [kW]");
+xlim(ax,[1 ndays]);
 
-% ---- Plot + export ----
-f2b = figure("Units","pixels","Position",[140 120 1400 520],"Color",figBG);
-
-ax = axes(f2b); hold(ax,"on");
-
-bh = bar(ax, d(idx_heat_d), Qday_avg(idx_heat_d), 1.0, ...
-    "FaceColor","red", "EdgeColor","none");
-bh.FaceAlpha = 0.6;
-
-bc = bar(ax, d(idx_cool_d), Qday_avg(idx_cool_d), 1.0, ...
-    "FaceColor","blue","EdgeColor","none");
-bc.FaceAlpha = 0.6;
-
-grid on; box on;
-ylabel("Daily average HVAC load [kW]");
-xlim([1 ndays]);
-
-% --- ticks at month transitions (for vertical grid alignment)
-xticks(month_edges_d + 1);       % +1 because day index starts at 1
-set(ax,"XTickLabel",[]);
+[mEdges, mCenters, mNames] = month_ticks("days");
+set(ax,"XTick",mEdges+1,"XTickLabel",[]);
 ax.XGrid = "on"; ax.YGrid = "on";
+add_month_labels(ax, mCenters+1, mNames, "Month of year");
 
-% --- overlay axis for centred month labels
-ax_lbl = axes("Position", ax.Position, ...
-              "Color","none", ...
-              "XAxisLocation","bottom", ...
-              "YAxisLocation","right", ...
-              "XLim", ax.XLim, ...
-              "YLim", ax.YLim);
+legend(ax,{"Heating","Cooling"}, "Location","best", "Orientation","horizontal");
+exportgraphics(f, fullfile(figDir,"Q5_annual_daily_HVAC.png"), "Resolution", dpi);
 
-ax_lbl.XTick = month_centers_d + 1;
-ax_lbl.XTickLabel = month_names;
-ax_lbl.YTick = [];
-ax_lbl.Box = "off";
-ax_lbl.XGrid = "off";
-ax_lbl.YGrid = "off";
-ax_lbl.TickLength = [0 0];
-xlabel(ax_lbl, "Month of year");
+% ===================== local helpers =====================
 
-legend(ax, {"Heating","Cooling"}, "Location","best", "Orientation","horizontal");
-uistack(ax,"top");
+function plot_posneg_bars(ax, x, y, width, alpha)
+    idxH = y > 0; idxC = y < 0;
+    if any(idxH)
+        b = bar(ax, x(idxH), y(idxH), width, "FaceColor","red","EdgeColor","none");
+        b.FaceAlpha = alpha;
+    end
+    if any(idxC)
+        b = bar(ax, x(idxC), y(idxC), width, "FaceColor","blue","EdgeColor","none");
+        b.FaceAlpha = alpha;
+    end
+end
 
-exportgraphics(f2b, fullfile(figDir,"Q5_dailyAvg_HVAC_load.png"), "Resolution", dpi);
+function [edges, centers, names] = month_ticks(mode)
+    days = [31 28 31 30 31 30 31 31 30 31 30 31];
+    names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    if mode == "hours"
+        edges = [0 cumsum(days)*24];
+    else
+        edges = [0 cumsum(days)];
+    end
+    centers = edges(1:end-1) + diff(edges)/2;
+end
 
-close all;
+function add_month_labels(ax, centers, names, xlab)
+    ax_lbl = axes("Position", ax.Position, "Color","none", ...
+        "XAxisLocation","bottom", "YAxisLocation","right", ...
+        "XLim", ax.XLim, "YLim", ax.YLim);
+    ax_lbl.XTick = centers;
+    ax_lbl.XTickLabel = names;
+    ax_lbl.YTick = [];
+    ax_lbl.Box = "off";
+    ax_lbl.XGrid = "off"; ax_lbl.YGrid = "off";
+    ax_lbl.TickLength = [0 0];
+    xlabel(ax_lbl, xlab);
+    uistack(ax,"top");
+end

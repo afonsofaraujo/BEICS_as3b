@@ -1,135 +1,92 @@
 close all; clear; clc;
 
-S = load("AS3B_Q5_Results.mat","Results","p","E_heat_kWh","E_cool_kWh");
-Results   = S.Results;
-p         = S.p;
-E_heat_kWh = S.E_heat_kWh;
-E_cool_kWh = S.E_cool_kWh;
+[root, figDir, resFile] = paths_from_plots();
+addpath(genpath(fullfile(root,"src")));
+addpath(genpath(fullfile(root,"plots")));
 
-% ---- Output folder ----
-figDir = fullfile(root,"figures");
-if ~exist(figDir,"dir"), mkdir(figDir); end
+S = load(resFile,"Results","p","in");
+R = S.Results;
 
-% ---- Export settings ----
-dpi = 600;                 % good for LaTeX
-figBG = "white";
+dpi = 600;
 
-% ---- Colors (match your current palette) ----
-col_glass = [0.90 0.15 0.15];
-col_air   = [0.10 0.40 0.80];
-col_wall3 = [0.80 0.70 0.10];
-col_wall4 = [0.55 0.20 0.70];
-col_out   = [0.20 0.60 0.20];
+set(groot, ...
+ "defaultAxesFontSize",14, ...
+ "defaultTextFontSize",14, ...
+ "defaultAxesLabelFontSizeMultiplier",1.1, ...
+ "defaultAxesTitleFontSizeMultiplier",1.2, ...
+ "defaultLegendFontSize",9);
 
-% Convenience
-t = Results.HOUR_CUM(:);
+cols = struct( ...
+ "out",  [0.20 0.60 0.20], ...
+ "glass",[0.90 0.15 0.15], ...
+ "air",  [0.10 0.40 0.80], ...
+ "wall3",[0.80 0.70 0.10], ...
+ "wall4",[0.55 0.20 0.70]);
+
+t = R.HOUR_CUM(:);
 N = numel(t);
 
-% ---- Font settings (LaTeX-friendly) ----
-set(groot, ...
-    "defaultAxesFontSize",        14, ...
-    "defaultTextFontSize",        14, ...
-    "defaultAxesLabelFontSizeMultiplier", 1.1, ...
-    "defaultAxesTitleFontSizeMultiplier", 1.2, ...
-    "defaultLegendFontSize",      9);
+[mEdges, mCenters, mNames] = month_ticks_hours();
 
+f = figure("Units","pixels","Position",[80 60 1400 900],"Color","white");
+tlo = tiledlayout(f, 5, 1, "TileSpacing","compact", "Padding","loose");
 
+ax1 = nexttile(tlo); plot_tile(ax1, t, R.T0, cols.out,  "T_0 [°C]", N, mEdges);
+ax2 = nexttile(tlo); plot_tile(ax2, t, R.T1, cols.glass,"T_1 [°C]", N, mEdges);
+ax3 = nexttile(tlo); plot_tile(ax3, t, R.T2, cols.air,  "T_2 [°C]", N, mEdges);
+ax4 = nexttile(tlo); plot_tile(ax4, t, R.T3, cols.wall3,"T_3 [°C]", N, mEdges);
 
-%%
+ax5 = nexttile(tlo);
+plot_tile(ax5, t, R.T4, cols.wall4,"T_4 [°C]", N, mEdges, true); % last = true -> keep xticks grid
+add_month_labels(ax5, mCenters, mNames, "Month of year");
 
-%% ============================================================
-% FIG 1 — Annual temperatures (month transitions + centered labels)
-% ============================================================
+exportgraphics(f, fullfile(figDir,"Q5_annual_hourly_t.png"), "Resolution", dpi);
 
-% ---- Month definition (non-leap year) ----
-days_in_month = [31 28 31 30 31 30 31 31 30 31 30 31];
-month_names   = ["Jan","Feb","Mar","Apr","May","Jun", ...
-                 "Jul","Aug","Sep","Oct","Nov","Dec"];
+% ===================== helpers =====================
 
-month_edges   = [0 cumsum(days_in_month)*24];           % month boundaries
-month_centers = month_edges(1:end-1) + diff(month_edges)/2;
+function [root, figDir, resFile] = paths_from_plots()
+    this = fileparts(mfilename("fullpath"));
+    root = fileparts(this);
+    figDir  = fullfile(root,"figures"); if ~exist(figDir,"dir"), mkdir(figDir); end
+    resFile = fullfile(root,"results","AS3B_Q5_Results.mat");
+end
 
+function [edges, centers, names] = month_ticks_hours()
+    days = [31 28 31 30 31 30 31 31 30 31 30 31];
+    names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    edges = [0 cumsum(days)*24];                 % includes 0 and 8760
+    centers = edges(1:end-1) + diff(edges)/2;
+end
 
-f1 = figure("Units","pixels","Position",[80 60 1400 900],"Color",figBG);
+function plot_tile(ax, x, y, col, ylab, N, month_edges, isLast)
+    if nargin < 8, isLast = false; end
+    plot(ax, x, y, "LineWidth",1.1, "Color",col);
+    grid(ax,"on"); box(ax,"on");
+    ylabel(ax, ylab);
+    xlim(ax,[1 N]);
 
-% ---------- T0 ----------
-tlo = tiledlayout(5,1, ...
-    "TileSpacing","compact", ...
-    "Padding","loose");
+    if isLast
+        % month transitions including 0/8760 (for grid alignment)
+        set(ax,"XTick",month_edges,"XTickLabel",[]);
+    else
+        % internal transitions only (avoid 0/8760 ticks)
+        set(ax,"XTick",month_edges(2:end-1),"XTickLabel",[]);
+    end
+    ax.XGrid = "on"; ax.YGrid = "on";
+end
 
-ax1 = nexttile;
-plot(t, Results.T0, "LineWidth",1.1, "Color",col_out);
-grid on; box on;
-ylabel("T_0 [°C]");
-xlim([1 N]);
-xticks(month_edges(2:end-1));
-set(ax1,"XTickLabel",[]);
-ax1.XGrid = "on"; ax1.YGrid = "on";
+function add_month_labels(ax, centers, names, xlab)
+    ax_lbl = axes("Position", ax.Position, ...
+        "Color","none", "XAxisLocation","bottom", "YAxisLocation","right", ...
+        "XLim", ax.XLim, "YLim", ax.YLim);
 
-% ---------- T1 ----------
-ax2 = nexttile;
-plot(t, Results.T1, "LineWidth",1.1, "Color",col_glass);
-grid on; box on;
-ylabel("T_1 [°C]");
-xlim([1 N]);
-xticks(month_edges(2:end-1));
-set(ax2,"XTickLabel",[]);
-ax2.XGrid = "on"; ax2.YGrid = "on";
+    ax_lbl.XTick = centers;
+    ax_lbl.XTickLabel = names;
+    ax_lbl.YTick = [];
+    ax_lbl.Box = "off";
+    ax_lbl.XGrid = "off"; ax_lbl.YGrid = "off";
+    ax_lbl.TickLength = [0 0];
+    xlabel(ax_lbl, xlab);
 
-% ---------- T2 ----------
-ax3  = nexttile;
-plot(t, Results.T2, "LineWidth",1.1, "Color",col_air);
-grid on; box on;
-ylabel("T_2 [°C]");
-xlim([1 N]);
-xticks(month_edges(2:end-1));
-set(ax3,"XTickLabel",[]);
-ax3.XGrid = "on"; ax3.YGrid = "on";
-
-% ---------- T3 ----------
-ax4  = nexttile;
-plot(t, Results.T3, "LineWidth",1.1, "Color",col_wall3);
-grid on; box on;
-ylabel("T_3 [°C]");
-xlim([1 N]);
-xticks(month_edges(2:end-1));
-set(ax4,"XTickLabel",[]);
-ax4.XGrid = "on"; ax4.YGrid = "on";
-
-% ---------- T4 (grid at month transitions + centered month labels) ----------
-ax5  = nexttile;
-plot(t, Results.T4, "LineWidth",1.1, "Color",col_wall4);
-grid on; box on;
-ylabel("T_4 [°C]");
-xlim([1 N]);
-
-% 1) Month-transition ticks for vertical grid alignment
-xticks(month_edges);              % transitions (includes 0 and 8760)
-set(ax5,"XTickLabel",[]);         % no labels on the main axis
-ax5.XGrid = "on"; ax5.YGrid = "on";
-
-% 2) Overlay axis ONLY for centered labels
-ax5_lbl = axes("Position", ax5.Position, ...
-               "Color","none", ...
-               "XAxisLocation","bottom", ...
-               "YAxisLocation","right", ...
-               "XLim", ax5.XLim, ...
-               "YLim", ax5.YLim);
-
-% Centered labels
-ax5_lbl.XTick = month_centers;
-ax5_lbl.XTickLabel = month_names;
-ax5_lbl.YTick = [];
-ax5_lbl.Box = "off";
-ax5_lbl.XGrid = "off";
-ax5_lbl.YGrid = "off";
-ax5_lbl.TickLength = [0 0];       % no extra tick marks
-xlabel(ax5_lbl, "Month of year");
-
-% keep the main axis on top for data visibility
-uistack(ax5, "top");
-
-set([ax1 ax2 ax3 ax4 ax5], "PositionConstraint","innerposition");
-
-exportgraphics(f1, fullfile(figDir,"Q5_annual_temperatures.png"), ...
-               "Resolution", dpi);
+    uistack(ax,"top");
+end
