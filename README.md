@@ -140,4 +140,33 @@ The figure below illustrates the thermal-node structure and the interaction betw
 
 ![Model schematic](figures/model_schematic.png)
 
+---
+
+## 8. Example results
+
+The following figures provide a visual overview of the main simulation outputs.
+
+### Annual HVAC loads
+Daily-average and hourly HVAC loads over the year, highlighting heating and cooling seasons.
+
+![Daily average HVAC load](figures/Q5_annual_daily_HVAC.png)
+
+![Hourly HVAC load](figures/Q5_annual_hourly_HVAC.png)
+
+### Annual nodal temperatures
+Hourly evolution of outdoor air, glazing, indoor air, interior mass, and façade wall temperatures.
+
+![Annual nodal temperatures](figures/Q5_annual_hourly_t.png)
+
+### Representative days
+Examples of typical winter, spring, summer, and autumn days, showing temperatures and thermal loads.
+
+![Day 46](figures/Q5_day46.png)
+
+![Day 137](figures/Q5_day137.png)
+
+![Day 228](figures/Q5_day228.png)
+
+![Day 319](figures/Q5_day319.png)
+
 December 2025
